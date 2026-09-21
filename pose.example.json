@@ -1,0 +1,9 @@
+{"generator":"Hand Kinematics Bench","pose":"custom",
+ "subject":{"hand_length_mm":176.5,"hand_breadth_mm":77.2},
+ "scale":{"thumb":1.04,"index":0.97,"middle":1,"ring":1,"little":1.06},
+ "joints":{
+  "index":{"mcp":52,"abd":4,"pip":68,"dip":45.6},
+  "middle":{"mcp":58,"abd":1,"pip":72,"dip":48.2},
+  "ring":{"mcp":55,"abd":-2,"pip":70,"dip":46.9},
+  "little":{"mcp":50,"abd":-6,"pip":66,"dip":44.2},
+  "thumb":{"cmcF":8,"cmcA":32,"cmcR":-6,"mcp":34,"abd":0,"ip":28}}}

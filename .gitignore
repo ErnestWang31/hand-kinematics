@@ -1,0 +1,10 @@
+export/
+*.stl
+*.step
+pose.json
+onshape_signs.json
+serve/
+.claude/launch.json
+__pycache__/
+*.pyc
+.DS_Store

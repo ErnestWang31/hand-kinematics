@@ -1,0 +1,17 @@
+# kinematics and constraint checking — the whole model runs on these two
+numpy>=1.24
+PyYAML>=6.0
+
+# pose rendering and workspace plots (hand_kinematics.py)
+matplotlib>=3.7
+
+# CAD export: STEP B-rep via OpenCascade (hand_export.py, hand_onshape.py)
+cadquery>=2.8
+
+# swept motion envelopes (hand_envelope.py)
+scikit-image>=0.22
+trimesh>=4.0
+fast-simplification>=0.1
+
+# Onshape REST API (onshape_bridge.py)
+requests>=2.31

@@ -1,0 +1,145 @@
+# ---------------------------------------------------------------------------
+# Parametric human hand kinematic model
+# Everything is expressed as a fraction of HL (hand length, wrist crease ->
+# tip of digit 3) or HB (hand breadth across the MCP heads), so one scalar
+# per subject drives the whole skeleton.
+#
+# Segment ratios derived from Greiner (1991) NATICK/TR-92/011 link lengths,
+# reconciled so that sum(MC, PP, MP, DP) == measured tip-to-wrist-crease.
+# See hand_anthropometry.md for the derivation and the digit-2 correction.
+# ---------------------------------------------------------------------------
+
+version: 1
+units: meters
+convention:
+  frame: right hand, palm down, +x radial (toward thumb), +y distal, +z dorsal
+  origin: midpoint of the distal wrist crease
+  angles: degrees, flexion positive
+
+# --- subject scale -------------------------------------------------------
+# Pick ONE of these presets, or set hand_length / hand_breadth directly.
+subjects:
+  f05:  {hand_length: 0.1646, hand_breadth: 0.0733, hand_circumference: 0.1724}
+  f50:  {hand_length: 0.1807, hand_breadth: 0.0795, hand_circumference: 0.1865}
+  f95:  {hand_length: 0.1968, hand_breadth: 0.0858, hand_circumference: 0.2007}
+  m05:  {hand_length: 0.1778, hand_breadth: 0.0835, hand_circumference: 0.1972}
+  m50:  {hand_length: 0.1941, hand_breadth: 0.0904, hand_circumference: 0.2133}
+  m95:  {hand_length: 0.2104, hand_breadth: 0.0973, hand_circumference: 0.2294}
+
+# --- MCP / CMC placement in the palm -------------------------------------
+# MCP joint centre lies at radial distance `metacarpal` * HL from the origin,
+# with lateral offset `x` * HB. This reproduces the transverse metacarpal arch.
+palm:
+  mcp_lateral_offset_hb: {index:  0.39, middle:  0.13, ring: -0.13, little: -0.39}
+  thumb_cmc:
+    x_hb: 0.30          # radial  (trapezium)
+    y_hl: 0.15          # distal
+    z_hl: -0.01         # slightly palmar
+    # Orientation of the thumb ray relative to the palm plane. The thumb
+    # column is pronated and set obliquely; these are the two numbers people
+    # most often get wrong in a glove retarget.
+    ray_deg: 30          # thumb ray swung radially out of the palm's long axis
+    palmar_tilt_deg: 0   # neutral thumb lies in the palm plane;
+                         # palmar abduction comes from thumb_cmc_abd
+    pronation_deg: 80    # axial rotation of the thumb column (opposition)
+
+# --- segment lengths, as fraction of hand length -------------------------
+# MC = wrist origin -> MCP;  PP = MCP -> PIP;  MP = PIP -> DIP;  DP = DIP -> tip
+# (DP includes the fingertip pulp, which is what a glove/marker actually sees).
+segments_hl:
+  thumb:  {mc: 0.245, pp: 0.172, dp: 0.170}   # MC = CMC->MCP, PP = MCP->IP
+  index:  {mc: 0.435, pp: 0.247, mp: 0.117, dp: 0.141}
+  middle: {mc: 0.432, pp: 0.275, mp: 0.139, dp: 0.141}
+  ring:   {mc: 0.396, pp: 0.268, mp: 0.126, dp: 0.144}
+  little: {mc: 0.376, pp: 0.209, mp: 0.090, dp: 0.131}
+
+# Digit shaft diameters, useful for collision geometry / glove thickness.
+# Fraction of hand breadth, taken from joint circumference / pi.
+segment_radius_hb:
+  index:  {mc: 0.130, pp: 0.123, mp: 0.102, dp: 0.085}
+  middle: {mc: 0.130, pp: 0.123, mp: 0.102, dp: 0.085}
+  ring:   {mc: 0.124, pp: 0.115, mp: 0.094, dp: 0.079}
+  little: {mc: 0.116, pp: 0.101, mp: 0.085, dp: 0.072}
+  thumb:  {carpal: 0.150, mc: 0.134, pp: 0.126, dp: 0.105}
+
+# --- joint limits ---------------------------------------------------------
+# "ext" is negative flexion (hyperextension). Ranges are the practical
+# active limits for a healthy adult; AAOS clinical norms in brackets are
+# tighter because they are conservative pass/fail thresholds.
+joints:
+  wrist:
+    flexion:   [-70,  80]     # ext 70 / flex 80
+    deviation: [-20,  35]     # ulnar 35 / radial 20 (+ = ulnar)
+    pronosup:  [-85,  85]     # forearm, include it if your glove has an IMU
+
+  finger_mcp_flexion:                 # AAOS norm 0-90
+    index:  [-30, 90]
+    middle: [-30, 90]
+    ring:   [-30, 95]
+    little: [-35, 95]
+  finger_mcp_abduction:               # + = radial. Max at full MCP extension.
+    index:  [-20, 20]
+    middle: [-15, 15]
+    ring:   [-20, 20]
+    little: [-30, 30]
+  finger_pip_flexion:                 # AAOS norm 0-100
+    index:  [-5, 110]
+    middle: [-5, 110]
+    ring:   [-5, 110]
+    little: [-5, 110]
+  finger_dip_flexion:                 # AAOS norm 0-70
+    index:  [-10, 80]
+    middle: [-10, 80]
+    ring:   [-10, 80]
+    little: [-15, 85]
+
+  thumb_cmc_flexion:    [-25, 30]     # ~50-53 deg total arc, in the palm plane
+  thumb_cmc_abduction:  [ -5, 60]     # palmar abduction, out of the palm plane
+  thumb_cmc_rotation:   [-20, 20]     # axial; small but essential for opposition
+  thumb_mcp_flexion:    [-10, 60]     # very high inter-subject variance
+  thumb_mcp_abduction:  [-10, 10]
+  thumb_ip_flexion:     [-25, 85]
+
+# --- coupling / dependency constraints -----------------------------------
+# A free 26-DoF model reaches poses no hand can make. These are the
+# constraints worth enforcing before you trust glove output.
+coupling:
+  # Terminal extensor / FDP coupling: DIP is not independent.
+  dip_from_pip: {ratio: 0.67, tolerance_deg: 15}
+
+  # PIP and MCP are weakly coupled during a natural power grasp; only apply
+  # this when you want to synthesise poses, not when you are fitting data.
+  pip_from_mcp_grasp: {ratio: 1.1, tolerance_deg: 35}
+
+  # Abduction authority collapses as the MCP flexes (collateral ligaments
+  # tighten over the cam-shaped metacarpal head). At 90 deg MCP flexion the
+  # finger is effectively locked in the frontal plane.
+  abduction_vs_mcp_flexion:
+    model: "abd_max_eff = abd_max * max(0, 1 - mcp_flex/90)"
+
+  # Juncturae tendinum: neighbouring fingers cannot fully diverge in flexion.
+  neighbour_mcp_flexion_max_diff_deg:
+    index_middle: 30
+    middle_ring: 25
+    ring_little: 30
+  neighbour_pip_flexion_max_diff_deg:
+    index_middle: 45
+    middle_ring: 35
+    ring_little: 45
+
+  # Little/ring metacarpals are mobile (the ulnar palmar arch cups the hand).
+  # Ignoring this is the single biggest source of error when retargeting a
+  # flat-palm glove model onto a real grasp.
+  metacarpal_arch:
+    ring_cmc_flexion:   [0, 15]
+    little_cmc_flexion: [0, 25]
+
+# --- neutral / reference poses -------------------------------------------
+poses:
+  flat:       {all: 0}
+  # Relaxed hand at rest, the pose a glove should be calibrated against.
+  rest:       {mcp: 25, pip: 45, dip: 20, thumb_cmc_abd: 30, thumb_mcp: 10, thumb_ip: 15}
+  # ~50 mm cylinder power grasp.
+  power_grasp: {mcp: 60, pip: 75, dip: 45, thumb_cmc_abd: 25, thumb_mcp: 40, thumb_ip: 30}
+  tip_pinch:  {mcp: 40, pip: 60, dip: 40, thumb_cmc_flex: -15, thumb_cmc_abd: 35,
+               thumb_cmc_rot: -20, thumb_mcp: 50, thumb_ip: 40}
