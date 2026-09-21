@@ -254,8 +254,7 @@ POSES = {
     "spread": pose(abd=12),
     "rest": pose(mcp=25, pip=45, t_abd=30, t_mcp=10, t_ip=15),
     "power grasp": pose(mcp=60, pip=75, dip=45, t_abd=25, t_flex=15, t_mcp=40, t_ip=30),
-    "tip pinch": pose(mcp=40, pip=60, dip=40, t_flex=-15, t_abd=35, t_rot=-20,
-                      t_mcp=50, t_ip=40),
+    "tip pinch": pose(mcp=40, pip=60, dip=40, t_flex=-5, t_abd=45, t_mcp=30, t_ip=30),
     "full fist": pose(mcp=85, pip=105, dip=70, t_abd=10, t_flex=25, t_mcp=50, t_ip=60),
 }
 

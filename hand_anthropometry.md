@@ -61,7 +61,7 @@ or a marker actually sees).
 
 | Digit | MC | PP | MP | DP | Σ (= tip-to-wrist) |
 |---|---|---|---|---|---|
-| Thumb | 0.245 | 0.172 (MCP→IP) | 0.170 | — | 0.587 |
+| Thumb | 0.232 | 0.165 (MCP→IP) | 0.140 | — | 0.537 |
 | Index | 0.435 | 0.247 | 0.117 | 0.141 | 0.940 |
 | Middle | 0.432 | 0.275 | 0.139 | 0.141 | 0.987 |
 | Ring | 0.396 | 0.268 | 0.126 | 0.144 | 0.934 |
@@ -85,8 +85,24 @@ why I trust these ratios.
    proximal phalanx of ~31 mm, and MC + PP + DP overshoots the D1 link length
    by 1.5 cm. His "D1 metacarpal link" runs from the thenar crease and swallows
    most of the proximal phalanx. **Do not use rows `d1_proximal_phalanx_link`
-   or `d1_metacarpal_link` for a kinematic chain.** I substituted anatomical
-   thumb proportions instead.
+   or `d1_metacarpal_link` for a kinematic chain.**
+
+   The thumb here is anatomical instead — 1st metacarpal 45 mm, proximal
+   phalanx 32 mm, distal phalanx plus pulp 27 mm at a 194 mm hand — with the
+   trapezium at 0.24 HB radial and 0.12 HL distal. Those five numbers are
+   calibrated against the one thumb dimension of Greiner's that *is* reliable,
+   the overall tip-to-wrist-crease distance:
+
+   | | model | Greiner | error |
+   |---|---|---|---|
+   | wrist → thumb tip, 50th %ile female | 125.5 mm | 125.7 mm | −0.2% |
+   | wrist → thumb tip, 50th %ile male | 135.5 mm | 137.9 mm | −1.8% |
+
+   For comparison the fingers land at −0.2% to −5.2% on the same measure, so
+   the thumb now sits inside the same band rather than outside it. An earlier
+   version of this model carried Greiner's segment values through and came out
+   **+10.9% — a visibly over-long thumb**, which also inflated every thumb
+   figure in section 5.
 
 ---
 
@@ -311,23 +327,23 @@ grid handles 12,000 capsules in about 20 seconds.
 
 | Digit | Swept volume |
 |---|---|
-| thumb | 2273 cm³ |
+| thumb | 1790 cm³ |
 | middle | 978 cm³ |
 | ring | 944 cm³ |
 | index | 884 cm³ |
 | little | 642 cm³ |
-| **union** | **3627 cm³** |
+| **union** | **3358 cm³** |
 
 Plus `envelope_<subject>_report.json` with every pairwise overlap, and a
 `_union.stl` for the single question "does my frame ever touch the hand at all".
 
 ### Two things the numbers say
 
-**The thumb eats the palmar half-space.** Its 5-DoF sweep is 2273 cm³ — more
-than twice any finger, and roughly ten times the volume of the hand itself. It
-overlaps the index envelope by 533 cm³ and still overlaps the *little* finger by
-266 cm³. Practically: there is almost nowhere on the palmar side to put fixed
-structure. Anything that has to be rigid belongs on the dorsum.
+**The thumb eats the palmar half-space.** Its 5-DoF sweep is 1790 cm³ — nearly
+twice any finger, and roughly five times the volume of the hand itself. It
+overlaps the index envelope by 401 cm³ and still reaches into the *little*
+finger's envelope. Practically: there is almost nowhere on the palmar side to
+put fixed structure. Anything that has to be rigid belongs on the dorsum.
 
 **Adjacent fingers sweep through each other.** index/middle share 345 cm³,
 middle/ring 366 cm³. Inter-finger space is not available for hardware. Anything

@@ -259,7 +259,7 @@ const PRESETS = {
 };
 /* segment ratios as fraction of hand length; validated against measured tip-to-wrist totals */
 const SEG = {
-  thumb :{mc:0.245,pp:0.172,dp:0.170},
+  thumb :{mc:0.232,pp:0.165,dp:0.140},
   index :{mc:0.435,pp:0.247,mp:0.117,dp:0.141},
   middle:{mc:0.432,pp:0.275,mp:0.139,dp:0.141},
   ring  :{mc:0.396,pp:0.268,mp:0.126,dp:0.144},
@@ -267,14 +267,14 @@ const SEG = {
 };
 /* shaft radii as fraction of hand breadth, from joint circumference / pi */
 const RAD = {
-  thumb :{carpal:.150,mc:.134,pp:.126,dp:.105},
+  thumb :{carpal:.150,mc:.134,pp:.126,dp:.112},
   index :{mc:.130,pp:.123,mp:.102,dp:.085},
   middle:{mc:.130,pp:.123,mp:.102,dp:.085},
   ring  :{mc:.124,pp:.115,mp:.094,dp:.079},
   little:{mc:.116,pp:.101,mp:.085,dp:.072}
 };
 const MCP_X = {index:0.39,middle:0.13,ring:-0.13,little:-0.39};   /* × hand breadth */
-const CMC   = {x:0.30,y:0.15,z:-0.01,ray:30,tilt:0,pron:80};
+const CMC   = {x:0.24,y:0.12,z:-0.01,ray:30,tilt:0,pron:80};
 
 /* functional limits (hard bounds) and the tighter AAOS clinical norm, degrees */
 const LIM = {
@@ -292,7 +292,7 @@ const POSES = {
   Spread     :{mcp:0, pip:0,  abd:14, t:{cmcF:10,cmcA:25,cmcR:0,mcp:0,ip:0}},
   Rest       :{mcp:25,pip:45, abd:3,  t:{cmcF:0,cmcA:30,cmcR:0,mcp:10,ip:15}},
   "Power grasp":{mcp:60,pip:75,abd:0, t:{cmcF:15,cmcA:25,cmcR:0,mcp:40,ip:30}},
-  "Tip pinch":{mcp:40,pip:60, abd:0,  t:{cmcF:-15,cmcA:35,cmcR:-20,mcp:50,ip:40}, dip:40},
+  "Tip pinch":{mcp:40,pip:60, abd:0,  t:{cmcF:-5,cmcA:45,cmcR:0,mcp:30,ip:30}, dip:40},
   "Full fist":{mcp:85,pip:105,abd:0,  t:{cmcF:25,cmcA:10,cmcR:0,mcp:50,ip:60}, dip:70}
 };
 

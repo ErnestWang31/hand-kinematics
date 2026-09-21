@@ -32,8 +32,8 @@ subjects:
 palm:
   mcp_lateral_offset_hb: {index:  0.39, middle:  0.13, ring: -0.13, little: -0.39}
   thumb_cmc:
-    x_hb: 0.30          # radial  (trapezium)
-    y_hl: 0.15          # distal
+    x_hb: 0.24          # radial  (trapezium)
+    y_hl: 0.12          # distal
     z_hl: -0.01         # slightly palmar
     # Orientation of the thumb ray relative to the palm plane. The thumb
     # column is pronated and set obliquely; these are the two numbers people
@@ -47,7 +47,12 @@ palm:
 # MC = wrist origin -> MCP;  PP = MCP -> PIP;  MP = PIP -> DIP;  DP = DIP -> tip
 # (DP includes the fingertip pulp, which is what a glove/marker actually sees).
 segments_hl:
-  thumb:  {mc: 0.245, pp: 0.172, dp: 0.170}   # MC = CMC->MCP, PP = MCP->IP
+  # Thumb: anatomical, NOT Greiner's decomposition, which is internally
+  # inconsistent (his MCP->IP reads 1.92 cm against a real ~3.1 cm) and made
+  # the thumb 11% over-long. Calibrated so wrist->thumb tip in the neutral pose
+  # lands within 2% of his measured tip-to-wrist-crease, the same band the
+  # fingers sit in. 1st metacarpal 45 mm, PP 32 mm, DP+pulp 27 mm at HL 194.
+  thumb:  {mc: 0.232, pp: 0.165, dp: 0.140}   # MC = CMC->MCP, PP = MCP->IP
   index:  {mc: 0.435, pp: 0.247, mp: 0.117, dp: 0.141}
   middle: {mc: 0.432, pp: 0.275, mp: 0.139, dp: 0.141}
   ring:   {mc: 0.396, pp: 0.268, mp: 0.126, dp: 0.144}
@@ -141,5 +146,5 @@ poses:
   rest:       {mcp: 25, pip: 45, dip: 20, thumb_cmc_abd: 30, thumb_mcp: 10, thumb_ip: 15}
   # ~50 mm cylinder power grasp.
   power_grasp: {mcp: 60, pip: 75, dip: 45, thumb_cmc_abd: 25, thumb_mcp: 40, thumb_ip: 30}
-  tip_pinch:  {mcp: 40, pip: 60, dip: 40, thumb_cmc_flex: -15, thumb_cmc_abd: 35,
-               thumb_cmc_rot: -20, thumb_mcp: 50, thumb_ip: 40}
+  tip_pinch:  {mcp: 40, pip: 60, dip: 40, thumb_cmc_flex: -5, thumb_cmc_abd: 45,
+               thumb_mcp: 30, thumb_ip: 30}
