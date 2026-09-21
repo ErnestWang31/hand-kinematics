@@ -184,6 +184,7 @@ worth enforcing before you trust glove output:
 - [hand_envelope.py](hand_envelope.py) — swept motion envelopes (section 5).
 - [hand_onshape.py](hand_onshape.py) — articulated, mate-ready export (section 6).
 - [onshape_bridge.py](onshape_bridge.py) — push bench poses into Onshape (section 7).
+- [build_site.py](build_site.py) — wraps the bench as a standalone page for hosting.
 - [hand_explorer.html](hand_explorer.html) — source of the interactive bench.
 
 ```bash
@@ -438,3 +439,51 @@ Angles go over the wire in radians. Onshape's API is metric-SI throughout.
 The request/response logic is unit-tested offline against a mocked API. It has
 **not** been run against a live Onshape document — that needs your API key. Run
 `check` first; if anything returns a 4xx the error body is printed in full.
+
+---
+
+## 8. STEP export in the browser
+
+The bench exports STEP directly — **Download STEP**, no Python round-trip. It
+loads OpenCascade as WebAssembly (via [replicad](https://replicad.xyz)) on the
+first click, ~23 MB fetched once, then builds the same six solids
+`hand_export.py` does.
+
+It is the real thing, not a mesh with a `.step` extension. A typical export
+carries ~30 conical, ~24 spherical and 5 spline faces — the splines are the
+palm's three-section loft, everything else is analytic. Same STEP writer as the
+Python path, so `Offset`, `Shell` and `Fillet` behave identically.
+
+About 4–6 seconds per export. The **clearance** field beside the button adds a
+uniform offset for a glove-liner cavity, exactly like `--clearance`.
+
+This works on the [hosted bench](https://ernestwang31.github.io/hand-kinematics/).
+It cannot work inside a Claude artifact — that sandbox blocks both the
+WebAssembly fetch and page-initiated downloads — so there the button falls back
+to the clipboard flow and says so.
+
+### Three OpenCascade degeneracies worth knowing about
+
+These cost real debugging time and will bite anyone building solids
+programmatically:
+
+1. **A sphere exactly tangent to a cone's base circle fails to union.** When the
+   joint ball's radius equals the bone's radius at that joint, the cone's base
+   circle lies *on* the sphere, and the boolean fails intermittently. The balls
+   are built 0.4% proud — 0.04 mm on a knuckle — which makes every union a
+   clean transversal intersection.
+2. **Two cones meeting face to face do not merge.** A straight finger puts
+   adjacent bones on an identical circle, and the union returns them as separate
+   lumps rather than one solid. Each bone is trimmed 0.3 mm at both ends and the
+   joint spheres bridge the gap.
+3. **A boolean can fail by returning an empty shape rather than throwing**, and
+   a shape that meshes perfectly well can still break the STEP writer. Every
+   union is checked for an empty result, and if a part cannot be unioned it is
+   exported as separate named bodies instead of losing the whole file.
+
+The thumb metacarpal and thenar eminence belong to the **thumb** solid here, not
+the palm — they move with the thumb, and it is the shape a glove's thumb stall
+wraps. That also leaves the palm completely static, identical in every pose.
+
+Verified across all six poses, clearances of 0–4 mm, and hand lengths from
+165 mm (5th-percentile female) to 210 mm (95th-percentile male).

@@ -33,6 +33,11 @@ eyeballing a photograph.
 pip install -r requirements.txt
 ```
 
+The bench exports STEP on its own — **Download STEP** loads OpenCascade as
+WebAssembly and writes real B-rep solids in the browser, no Python needed. The
+command-line tools below are for batch work: every pose and every size at once,
+motion envelopes, and the articulated build for CAD assembly.
+
 Only `numpy` and `pyyaml` are needed for the kinematics. CAD export pulls in
 CadQuery (OpenCascade); envelopes add scikit-image and trimesh. The web bench
 has no dependencies at all — open the HTML file, or use the hosted copy at

@@ -89,6 +89,12 @@ details[open] summary::after{content:"–"}
 
 .viewbar{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .viewbar .spacer{flex:1}
+.viewbar .clr{font-family:var(--mono);font-size:10.5px;color:var(--ink-3);display:flex;
+  align-items:center;gap:4px}
+.viewbar .clr input{width:48px;background:var(--sunk);color:var(--ink);border:1px solid var(--line-soft);
+  border-radius:3px;padding:3px 4px;font-family:var(--mono);font-size:10.5px}
+#stepStatus{font-family:var(--mono);font-size:10.5px;color:var(--ink-3)}
+#stepStatus.err{color:var(--warn)}
 .canvas-wrap{position:relative;flex:1;min-height:300px;border:1px solid var(--line);border-radius:4px;
   background:var(--canvas-bg);overflow:hidden}
 canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
@@ -198,8 +204,12 @@ canvas.drag{cursor:grabbing}
     <button class="chip" data-view="oblique" type="button" aria-pressed="true">Oblique</button>
     <span class="spacer"></span>
     <button class="chip" id="sweepBtn" type="button">Sweep last joint</button>
+    <button class="chip" id="stepBtn" type="button">Download STEP</button>
+    <label class="clr">clearance
+      <input type="number" id="clearance" value="0" min="0" max="8" step="0.5"> mm</label>
     <button class="chip" id="exportBtn" type="button">Copy pose → CAD</button>
     <button class="chip" id="themeBtn" type="button">Theme</button>
+    <span id="stepStatus"></span>
   </div>
   <div class="export" id="exportPanel" hidden>
     <div class="export-head">
@@ -592,6 +602,150 @@ el("sweepBtn").onclick=()=>{
     L.r.value=v; L.set(v); sync(); requestAnimationFrame(step);
   })(t0);
 };
+/* ---------- STEP export, in the browser ----------------------------------
+   Loads OpenCascade (via replicad) on first use and builds the same solids
+   hand_export.py does: one fused solid per digit plus the palm, out of cones,
+   cylinders and spheres. Analytic B-rep, not a mesh — CAD sees real conical
+   and spherical faces, so Offset, Shell and Fillet behave.
+   The kernel is ~23 MB and is fetched once, on the first click only.        */
+const CAD = {R:null, loading:null, degraded:[]};
+const REPLICAD = "https://cdn.jsdelivr.net/npm/replicad@1.1.0/dist/replicad.js";
+const KERNEL   = "https://cdn.jsdelivr.net/npm/replicad-opencascadejs@1.1.0/dist/replicad_single.js";
+
+function stepStatus(msg, err){
+  const el2=el("stepStatus"); el2.textContent=msg||""; el2.classList.toggle("err",!!err);
+}
+async function kernel(){
+  if(CAD.R) return CAD.R;
+  if(!CAD.loading) CAD.loading=(async()=>{
+    stepStatus("loading CAD kernel, ~23 MB, once…");
+    const [R,m]=await Promise.all([import(REPLICAD), import(KERNEL)]);
+    R.setOC(await m.default());
+    CAD.R=R; return R;
+  })();
+  return CAD.loading;
+}
+
+const v3={sub:(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]],
+          len:a=>Math.hypot(a[0],a[1],a[2]),
+          cross:(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]]};
+
+/* A tapered solid from a to b: lofted between two circles, which gives a
+   conical (or cylindrical, when the radii match) face — never a spline.
+   Both ends are pulled in by EPS. Without that, a straight finger puts two
+   cones face to face on an identical circle, and OCC's fuse leaves them as
+   separate lumps instead of one solid. The joint spheres cover the gap. */
+const EPS = 0.3;   // mm
+function cadFrustum(R,a,b,ra,rb){
+  const v=v3.sub(b,a), h=v3.len(v);
+  if(h<2*EPS+1e-3) return null;
+  const d=[v[0]/h,v[1]/h,v[2]/h];
+  const t=EPS/h, ra2=ra+(rb-ra)*t, rb2=rb+(ra-rb)*t, h2=h-2*EPS;
+  const a2=[a[0]+d[0]*EPS,a[1]+d[1]*EPS,a[2]+d[2]*EPS];
+  let s=R.drawCircle(ra2).sketchOnPlane("XY",0)
+        .loftWith(R.drawCircle(rb2).sketchOnPlane("XY",h2),{ruled:true});
+  const ax=v3.cross([0,0,1],d), n=v3.len(ax);
+  if(n>1e-9) s=s.rotate(Math.acos(Math.max(-1,Math.min(1,d[2])))*180/Math.PI,[0,0,0],ax);
+  else if(d[2]<0) s=s.rotate(180,[0,0,0],[1,0,0]);
+  return s.translate(a2);
+}
+const cadBall=(R,c,r)=>R.makeSphere(r*1.004).translate(c);
+/* Returns [{shape,name}]. A boolean can still fail on a degenerate overlap,
+   and losing the whole export to one bad union would be worse than shipping
+   the pieces: on failure the part comes out as separate named bodies, which
+   CAD imports perfectly well and you can union yourself. */
+function cadFuse(list,name){
+  list=list.filter(Boolean);
+  if(!list.length) return [];
+  try{
+    const fused=list.reduce((acc,s)=>acc?acc.fuse(s):s);
+    // a failed boolean can come back empty instead of throwing
+    if(!fused || !fused.wrapped) throw new Error("union produced an empty shape");
+    return [{shape:fused, name}];
+  }catch(e){
+    console.warn(`${name}: union failed, exporting ${list.length} separate bodies`,e);
+    CAD.degraded.push(name);
+    return list.map((shape,i)=>({shape,name:`${name}_${i+1}`}));
+  }
+}
+
+function buildHand(R,clear){
+  CAD.degraded=[];
+  const K=fk();            // already millimetres — S.hl and S.hb are in mm
+  const HB=S.hb, HL=S.hl;
+  const r=(d,k)=>RAD[d][k]*HB+clear;
+  const keysOf=d=>d==="thumb"?["carpal","mc","pp","dp"]:["mc","pp","mp","dp"];
+  const parts=[];
+
+  for(const f of FINGERS){
+    const P=K[f], keys=keysOf(f), acc=[];
+    for(let i=1;i<P.length-1;i++){
+      acc.push(cadFrustum(R,P[i],P[i+1],r(f,keys[i-1]),r(f,keys[i])));
+      acc.push(cadBall(R,P[i],r(f,keys[i-1])));
+    }
+    acc.push(cadBall(R,P[P.length-1],r(f,"dp")));
+    parts.push(...cadFuse(acc,f));
+  }
+
+  /* The whole thumb ray, thenar eminence included, is one solid. It all moves
+     with the thumb, and it is the shape a glove's thumb stall wraps. */
+  {
+    const P=K.thumb, acc=[];
+    const root=[0,1,2].map(i=>P[0][i]+0.35*(P[1][i]-P[0][i]));
+    acc.push(cadFrustum(R,root,P[1],r("thumb","carpal")*0.8,r("thumb","carpal")));
+    acc.push(cadBall(R,P[1],r("thumb","carpal")));
+    const tk=["carpal","mc","pp","dp"];
+    for(let i=1;i<P.length-1;i++){
+      acc.push(cadFrustum(R,P[i],P[i+1],r("thumb",tk[i-1]),r("thumb",tk[i])));
+      acc.push(cadBall(R,P[i],r("thumb",tk[i-1])));
+    }
+    acc.push(cadBall(R,P[4],r("thumb","dp")));
+    parts.push(...cadFuse(acc,"thumb"));
+  }
+
+  /* palm: three lofted ellipses plus the four finger metacarpals. Nothing
+     here moves, so it is the same solid in every pose. */
+  const yk=FINGERS.reduce((s2,f)=>s2+K[f][1][1],0)/4;
+  const sec=[[0, .365*HB+clear, .145*HB+clear, 0],
+             [.45*yk, .465*HB+clear, .168*HB+clear, 0],
+             [yk, .505*HB+clear, .156*HB+clear, .010*HL]];
+  const sk=sec.map(([z,a,b,zd])=>R.drawEllipse(a,b).translate([0,-zd]).sketchOnPlane("XY",z));
+  const acc=[sk[0].loftWith([sk[1],sk[2]],{ruled:false}).rotate(-90,[0,0,0],[1,0,0])];
+  for(const f of FINGERS){
+    acc.push(cadFrustum(R,K[f][0],K[f][1],r(f,"mc")*1.25,r(f,"mc")));
+    acc.push(cadBall(R,K[f][1],r(f,"mc")));
+  }
+  parts.push(...cadFuse(acc,"palm"));
+  return parts;
+}
+
+el("stepBtn").onclick=async()=>{
+  const btn=el("stepBtn"); btn.disabled=true;
+  const t0=performance.now();
+  try{
+    const R=await kernel();
+    stepStatus("building solids…");
+    await new Promise(r2=>setTimeout(r2,16));
+    const clear=Math.max(0,parseFloat(el("clearance").value)||0);
+    const parts=buildHand(R,clear).filter(p=>p.shape && p.shape.wrapped);
+    if(!parts.length) throw new Error("nothing to export");
+    const blob=R.exportSTEP(parts,{unit:"mm"});
+    const name=`hand_${S.hl.toFixed(0)}mm_${(S.pose||"custom").replace(/\s+/g,"_")}`
+              +(clear?`_clear${clear}`:"")+".step";
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),4000);
+    stepStatus(`${name} · ${((performance.now()-t0)/1000).toFixed(1)}s`
+      + ` · ${parts.length} parts`
+      + (CAD.degraded.length ? ` · ${CAD.degraded.join(", ")} split into separate bodies` : ""));
+  }catch(e){
+    stepStatus("CAD kernel unavailable here — use Copy pose → CAD", true);
+    el("exportBtn").click();
+    console.error(e);
+  }finally{ btn.disabled=false; }
+};
+
 function poseJSON(){
   const n=(v,p=1)=>+v.toFixed(p);
   const joints={};
